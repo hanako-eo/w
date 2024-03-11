@@ -1,5 +1,9 @@
 set_policy("build.warning", true)
 add_rules("mode.debug", "mode.release")
+set_languages("cxx20")
+set_toolchains("gcc")
+
+add_requires("frozen")
 
 if is_mode("debug") then
     add_defines("DEBUG")
@@ -14,10 +18,11 @@ add_cflags("-Wno-unused-function")
 
 target("w")
     set_kind("binary")
+    add_packages("frozen")
     add_files("src/**.cpp")
 
-target("tests")
-    set_kind("binary")
-    add_files("src/**.cpp")
-    -- add_files("tests/**.cpp")
-    remove_files("src/main.c")
+-- target("tests")
+--     set_kind("binary")
+--     add_files("src/**.cpp")
+--     -- add_files("tests/**.cpp")
+--     remove_files("src/main.c")
