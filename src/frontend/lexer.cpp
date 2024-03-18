@@ -1,3 +1,4 @@
+#include <utility>
 #include <optional>
 #include <string>
 #include <memory>
@@ -97,7 +98,6 @@ namespace W {
         { "&", TokenKind::Amp },
         { "||", TokenKind::LogicalOr },
         { "|", TokenKind::Pipe },
-        { "$", TokenKind::Dollar },
         { "@", TokenKind::At },
         { "{", TokenKind::Lcbr },
         { "}", TokenKind::Rcbr },
@@ -114,9 +114,16 @@ namespace W {
 
     Lexer::Lexer(std::filesystem::path path): 
         m_path(std::make_shared<std::filesystem::path>(path)),
-        m_file(m_path->c_str())
+        m_input(std::ifstream(m_path->c_str()).rdbuf())
     {
-        std::getline(m_file, m_current_line);
+        std::getline(m_input, m_current_line);
+    }
+
+    Lexer::Lexer(std::filesystem::path path, std::istringstream data): 
+        m_path(std::make_shared<std::filesystem::path>(path)),
+        m_input(data.rdbuf())
+    {
+        std::getline(m_input, m_current_line);
     }
 
     char Lexer::buffer_at(std::size_t i) {
@@ -132,7 +139,7 @@ namespace W {
 
     void Lexer::advance() {
         if (m_col > m_current_line.size() + 1) {
-            std::getline(m_file, m_current_line);
+            std::getline(m_input, m_current_line);
             m_line += 1;
             m_col = 1;
         } else {
@@ -141,8 +148,12 @@ namespace W {
     }
 
     void Lexer::skip_whitespace() {
-        while (std::isspace(buffer_at()) && !m_file.eof())
+        while (std::isspace(buffer_at()) && !m_input.eof())
             advance();
+    }
+
+    bool Lexer::finished() {
+        return m_input.eof() && m_col >= m_current_line.size();
     }
 
     Token Lexer::next() {
@@ -150,7 +161,7 @@ namespace W {
 
         Token token = {m_path, m_line, m_col, TokenKind::Unknown, std::nullopt};
 
-        if (m_file.eof()) {
+        if (finished()) {
             token.kind = TokenKind::Eof;
             return token;
         }
@@ -186,9 +197,10 @@ namespace W {
         while (std::isalnum(c) || c == '_') {
             data.push_back(c);
             advance();
+            c = buffer_at();
         }
 
-        if (auto it = s_reserved_keywords.find(data); it == s_reserved_keywords.end()) {
+        if (auto it = s_reserved_keywords.find(std::string_view(data)); it == s_reserved_keywords.end()) {
             token.kind = TokenKind::Ident;
             token.data = data;
         } else
@@ -205,8 +217,8 @@ namespace W {
         if (c != '0') goto parsing;
         data.push_back(c);
         advance();
-
         c = buffer_at();
+
         switch (c) {
         case 'b':
             if (number_flag == NO_FLAG) number_flag = BINARY;
@@ -239,8 +251,10 @@ namespace W {
         advance();
         char c = buffer_at();
         if (c == '\\') {
+            c = parse_backslash();
+            if (c > -1) data.push_back(c);
+            else todo("error \\n in char")
             advance();
-            data.push_back(c);
             c = buffer_at();
         } else {
             // parse utf-8 char
@@ -308,21 +322,28 @@ namespace W {
         char c = buffer_at();
     
         switch (c) {
-        case '0':
+        case '0': {
             return '\0';
-        case 'n':
+        }
+        case 'n': {
             return '\n';
-        case 'r':
+        }
+        case 'r': {
             return '\r';
-        case 't':
+        }
+        case 't': {
             return '\t';
-        case 'b':
+        }
+        case 'b': {
             return '\b';
-        case 'f':
+        }
+        case 'f': {
             return '\f';
-        case 'v':
+        }
+        case 'v': {
             return '\v';
-        case 'x':
+        }
+        case 'x': {
             advance();
             char a = buffer_at();
             if (!isxdigit(a)) todo("error for \\x");
@@ -335,10 +356,13 @@ namespace W {
             b = (b <= '9') ? b - '0' : (b & 0x7) + 9;
 
             return (a << 4) + b;
-        case '\n':
+        }
+        case '\n': {
             return -1;
-        default:
+        }
+        default: {
             return c;
+        }
         }
     }
 

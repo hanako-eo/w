@@ -4,6 +4,7 @@ set_languages("cxx20")
 set_toolchains("gcc")
 
 add_requires("frozen")
+add_requires("catch2")
 
 if is_mode("debug") then
     add_defines("DEBUG")
@@ -21,8 +22,10 @@ target("w")
     add_packages("frozen")
     add_files("src/**.cpp")
 
--- target("tests")
---     set_kind("binary")
---     add_files("src/**.cpp")
---     -- add_files("tests/**.cpp")
---     remove_files("src/main.c")
+target("tests")
+    set_kind("binary")
+    add_packages("frozen")
+    add_packages("catch2")
+    add_files("src/**.cpp")
+    add_files("tests/**.cpp")
+    remove_files("src/main.c")

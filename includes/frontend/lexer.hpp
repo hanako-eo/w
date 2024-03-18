@@ -5,6 +5,7 @@
 #include <iostream>
 #include <optional>
 #include <fstream>
+#include <sstream>
 #include <cctype>
 #include <memory>
 #include <string>
@@ -28,9 +29,11 @@ namespace W {
     class Lexer {
     public:
         Lexer(std::filesystem::path path);
+        Lexer(std::filesystem::path path, std::istringstream data);
         ~Lexer() = default;
 
         Token next();
+        bool finished();
 
     private:
         bool start_with(std::string_view sv);
@@ -47,7 +50,7 @@ namespace W {
 
         std::shared_ptr<const std::filesystem::path> m_path;
         std::string m_current_line;
-        std::ifstream m_file;
+        std::istream m_input;
         std::size_t m_line = 1;
         std::size_t m_col = 1;
     };

@@ -7,7 +7,7 @@ WLANG_TOKEN(Eof)
 WLANG_TOKEN(Ident) // user
 WLANG_TOKEN(Number) // 123
 WLANG_TOKEN(String) // 'foo'
-WLANG_TOKEN(StrInter) // 'name=$user.name'
+// WLANG_TOKEN(StrInter) // 'name=$user.name'
 WLANG_TOKEN(Rune) // `A` - rune
 WLANG_TOKEN(Plus) // +
 WLANG_TOKEN(Minus) // -
@@ -28,7 +28,7 @@ WLANG_TOKEN(Semicolon) // ;
 WLANG_TOKEN(Colon) // :
 WLANG_TOKEN(Amp) // &
 WLANG_TOKEN(Hash) // #
-WLANG_TOKEN(Dollar) // $
+// WLANG_TOKEN(Dollar) // $
 WLANG_TOKEN(At) // @
 WLANG_TOKEN(StrDollar)
 WLANG_TOKEN(LeftShift) // <<
