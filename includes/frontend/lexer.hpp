@@ -9,6 +9,7 @@
 #include <cctype>
 #include <memory>
 #include <string>
+#include <array>
 
 namespace W {
     enum struct TokenKind {
@@ -18,7 +19,7 @@ namespace W {
     };
 
     struct Token {
-        std::shared_ptr<const std::filesystem::path> file_path;
+        const std::filesystem::path& file_path;
         std::size_t line;
         std::size_t col;
 
@@ -26,10 +27,10 @@ namespace W {
         std::optional<std::string> data;
     };
 
+    template <size_t N = 10>
     class Lexer {
     public:
-        Lexer(std::filesystem::path path);
-        Lexer(std::filesystem::path path, std::istringstream data);
+        Lexer(const std::filesystem::path& path, std::istream& input);
         ~Lexer() = default;
 
         Token next();
@@ -38,7 +39,7 @@ namespace W {
     private:
         bool start_with(std::string_view sv);
         char buffer_at(std::size_t i = 0);
-        void advance();
+        void advance(size_t offset = 1);
         void skip_whitespace();
 
         char parse_backslash();
@@ -48,12 +49,13 @@ namespace W {
         void read_string(Token& token, char open_quote);
         void read_comment(Token& token, bool is_multiline);
 
-        std::shared_ptr<const std::filesystem::path> m_path;
-        std::string m_current_line;
-        std::istream m_input;
+        const std::filesystem::path& m_path;
+        std::array<char, N> m_working_buffer;
+        std::istream& m_input;
         std::size_t m_line = 1;
         std::size_t m_col = 1;
     };
 }
 
+#include <frontend/lexer.inl>
 #endif

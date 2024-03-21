@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <utility>
 #include <optional>
 #include <string>
@@ -6,14 +7,13 @@
 #include <frozen/string.h>
 #include <frozen/unordered_map.h>
 
-#include <frontend/lexer.hpp>
 #include <utils/macros.hpp>
 
 namespace W {
     constexpr auto s_reserved_keywords = frozen::make_unordered_map<frozen::string, TokenKind>({
-        { "as", TokenKind::KeyAs },
         { "asm", TokenKind::KeyAsm },
         { "assert", TokenKind::KeyAssert },
+        { "as", TokenKind::KeyAs },
         { "atomic", TokenKind::KeyAtomic },
         { "break", TokenKind::KeyBreak },
         { "const", TokenKind::KeyConst },
@@ -28,8 +28,8 @@ namespace W {
         { "goto", TokenKind::KeyGoto },
         { "if", TokenKind::KeyIf },
         { "import", TokenKind::KeyImport },
-        { "in", TokenKind::KeyIn },
         { "interface", TokenKind::KeyInterface },
+        { "in", TokenKind::KeyIn },
         { "is", TokenKind::KeyIs },
         { "match", TokenKind::KeyMatch },
         { "module", TokenKind::KeyModule },
@@ -112,51 +112,57 @@ namespace W {
         { ".", TokenKind::Dot },
     });
 
-    Lexer::Lexer(std::filesystem::path path): 
-        m_path(std::make_shared<std::filesystem::path>(path)),
-        m_input(std::ifstream(m_path->c_str()).rdbuf())
+    template <size_t N>
+    Lexer<N>::Lexer(const std::filesystem::path& path, std::istream& input): 
+        m_path(path),
+        m_input(input)
     {
-        std::getline(m_input, m_current_line);
-    }
-
-    Lexer::Lexer(std::filesystem::path path, std::istringstream data): 
-        m_path(std::make_shared<std::filesystem::path>(path)),
-        m_input(data.rdbuf())
-    {
-        std::getline(m_input, m_current_line);
-    }
-
-    char Lexer::buffer_at(std::size_t i) {
-        if (m_col == m_current_line.size())
-            return '\n';
-
-        return m_current_line.at(m_col + i - 1);
-    }
-
-    bool Lexer::start_with(std::string_view x) {
-        return m_current_line.starts_with(x);
-    }
-
-    void Lexer::advance() {
-        if (m_col > m_current_line.size() + 1) {
-            std::getline(m_input, m_current_line);
-            m_line += 1;
-            m_col = 1;
-        } else {
-            m_col += 1;
+        for (size_t i = 0; i < N; i++) {
+            int32_t c = m_input.get();
+            m_working_buffer[i] = c != EOF ? (char)c : 0;
         }
     }
 
-    void Lexer::skip_whitespace() {
-        while (std::isspace(buffer_at()) && !m_input.eof())
+    template <size_t N>
+    char Lexer<N>::buffer_at(std::size_t i) {
+        return m_working_buffer.at(i);
+    }
+
+    template <size_t N>
+    bool Lexer<N>::start_with(std::string_view x) {
+        return std::string_view(m_working_buffer.begin(), m_working_buffer.begin() + x.size()) == x;
+    }
+
+    template <size_t N>
+    void Lexer<N>::advance(size_t offset) {
+        // shift the whole buffer by offset
+        std::shift_left(m_working_buffer.begin(), m_working_buffer.end(), offset);
+
+        for (size_t i = 0; i < offset; i++) {
+            int32_t c = m_input.get();
+            m_working_buffer[N - offset + i] = c != EOF ? (char)c : 0;
+            if (c == '\n') {
+                m_line += 1;
+                m_col = 0;
+            } else {
+                m_col += 1;
+            }
+        }
+    }
+
+    template <size_t N>
+    void Lexer<N>::skip_whitespace() {
+        while (std::isspace(buffer_at()) && !finished())
             advance();
     }
 
-    bool Lexer::finished() {
-        return m_input.eof() && m_col >= m_current_line.size();
+    template <size_t N>
+    bool Lexer<N>::finished() {
+        return m_working_buffer.at(0) == 0;
     }
 
-    Token Lexer::next() {
+    template <size_t N>
+    Token Lexer<N>::next() {
         skip_whitespace();
 
         Token token = {m_path, m_line, m_col, TokenKind::Unknown, std::nullopt};
@@ -182,6 +188,7 @@ namespace W {
             for (auto op : s_operations) {
                 if (start_with(op.first.data())) {
                     token.kind = op.second;
+                    advance(op.first.size());
                     break;
                 }
             }
@@ -190,7 +197,8 @@ namespace W {
         return token;
     }
 
-    void Lexer::read_ident(Token& token) {
+    template <size_t N>
+    void Lexer<N>::read_ident(Token& token) {
         char c = buffer_at();
         std::string data;
 
@@ -207,44 +215,24 @@ namespace W {
             token.kind = it->second;
     }
 
-    void Lexer::read_number(Token& token) {
+    template <size_t N>
+    void Lexer<N>::read_number(Token& token) {
         char c = buffer_at();
         std::string data;
 
-        enum { NO_FLAG, BINARY, OCTAL, DECIMAL, HEXA } number_flag = NO_FLAG;
-
-        // see if is 0x, 0o or 0b
-        if (c != '0') goto parsing;
-        data.push_back(c);
-        advance();
-        c = buffer_at();
-
-        switch (c) {
-        case 'b':
-            if (number_flag == NO_FLAG) number_flag = BINARY;
-        case 'o':
-            if (number_flag == NO_FLAG) number_flag = OCTAL;
-        case 'x':
-            if (number_flag == NO_FLAG) number_flag = HEXA;
-            break;
-        default:
-            number_flag = DECIMAL;
-            if (!isdigit(c)) todo("non-digit or b, o or x number flag.");
-        }
-
-    parsing:
-        do {
+        while (isxdigit(c) || c == '_') {
             // TODO: error: this number has unsuitable digit
             data.push_back(c);
             advance();
             c = buffer_at();
-        } while (isxdigit(c) || c == '_');
+        }
 
         token.kind = TokenKind::Number;
         token.data = data;
     }
 
-    void Lexer::read_rune(Token& token) {
+    template <size_t N>
+    void Lexer<N>::read_rune(Token& token) {
         std::string data;
 
         // skip start '`'
@@ -288,12 +276,12 @@ namespace W {
         token.data = data;
     }
 
-    void Lexer::read_comment(Token& token, bool is_multiline) {
+    template <size_t N>
+    void Lexer<N>::read_comment(Token& token, bool is_multiline) {
         char c = buffer_at();
         std::string data;
 
-        advance();
-        advance();
+        advance(2);
 
         if (is_multiline) {
             int32_t nesting = 0;
@@ -316,7 +304,8 @@ namespace W {
         token.data = data;
     }
 
-    char Lexer::parse_backslash() {
+    template <size_t N>
+    char Lexer<N>::parse_backslash() {
         // skip '\'
         advance();
         char c = buffer_at();
@@ -366,7 +355,8 @@ namespace W {
         }
     }
 
-    void Lexer::read_string(Token& token, char open_quote) {
+    template <size_t N>
+    void Lexer<N>::read_string(Token& token, char open_quote) {
         std::string data;
         // skip open " or '
         advance();
