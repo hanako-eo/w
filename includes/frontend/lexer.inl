@@ -164,6 +164,10 @@ namespace W {
     template <size_t N>
     Token Lexer<N>::next() {
         skip_whitespace();
+        while (start_with("//") || start_with("/*")){
+            read_comment(buffer_at(1) == '*');
+            skip_whitespace();
+        }
 
         Token token = {m_path, m_line, m_col, TokenKind::Unknown, std::nullopt};
 
@@ -182,8 +186,6 @@ namespace W {
             read_rune(token);
         else if (c == '"' || c == '\'')
             read_string(token, c);
-        else if (start_with("//") || start_with("/*"))
-            read_comment(token, buffer_at(1) == '*');
         else {
             for (auto op : s_operations) {
                 if (start_with(op.first.data())) {
@@ -221,7 +223,6 @@ namespace W {
         std::string data;
 
         while (isxdigit(c) || c == '_') {
-            // TODO: error: this number has unsuitable digit
             data.push_back(c);
             advance();
             c = buffer_at();
@@ -277,10 +278,8 @@ namespace W {
     }
 
     template <size_t N>
-    void Lexer<N>::read_comment(Token& token, bool is_multiline) {
+    void Lexer<N>::read_comment(bool is_multiline) {
         char c = buffer_at();
-        std::string data;
-
         advance(2);
 
         if (is_multiline) {
@@ -290,18 +289,17 @@ namespace W {
                     if (!nesting) break;
                     nesting--;
                 } else if (start_with("/*")) nesting++;
-                data.push_back(c);
+                advance();
                 c = buffer_at();
             }
+            // skiping */
+            advance(2);
         } else {
             while (c != '\n') {
-                data.push_back(c);
+                advance();
                 c = buffer_at();
             }
         }
-        
-        token.kind = TokenKind::Comment;
-        token.data = data;
     }
 
     template <size_t N>

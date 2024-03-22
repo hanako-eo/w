@@ -47,7 +47,7 @@ namespace W {
         void read_number(Token& token);
         void read_rune(Token& token);
         void read_string(Token& token, char open_quote);
-        void read_comment(Token& token, bool is_multiline);
+        void read_comment(bool is_multiline);
 
         const std::filesystem::path& m_path;
         std::array<char, N> m_working_buffer;

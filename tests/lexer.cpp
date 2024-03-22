@@ -9,7 +9,7 @@
 
 TEST_CASE("lexing") {
     SECTION("primitives") {
-        std::istringstream data("\"test\" 'it\\'s a test' \n0 `A` `\\n`");
+        std::istringstream data("\"test\" 'it\\'s a test' \n0 `A` `\\n` // test\n /* test */ /* /* test */ nesting */");
         W::Lexer lexer("test.w", data);
 
         std::pair<W::TokenKind, std::optional<std::string_view>> expecteds[] = {
@@ -35,7 +35,7 @@ TEST_CASE("lexing") {
             "as asm assert atomic break const continue defer "
             "else enum false for fn global goto if import in interface is match module "
             "mut nil none return sizeof likely like unlikely offsetof struct true "
-            "typeof type or union pub static volatile unsafe"
+            "typeof type or union pub static volatile unsafe test1"
         );
         W::Lexer lexer("test.w", data);
 
@@ -88,6 +88,10 @@ TEST_CASE("lexing") {
             CHECK(expected == token.kind);
             CHECK(!token.data.has_value());
         }
+
+        W::Token token1 = lexer.next();
+        CHECK(W::TokenKind::Ident == token1.kind);
+        CHECK(token1.data == "test1");
 
         W::Token token = lexer.next();
         CHECK(W::TokenKind::Eof == token.kind);
