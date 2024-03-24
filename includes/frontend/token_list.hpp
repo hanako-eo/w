@@ -5,7 +5,8 @@
 WLANG_TOKEN(Unknown)
 WLANG_TOKEN(Eof)
 WLANG_TOKEN(Ident) // user
-WLANG_TOKEN(Number) // 123
+WLANG_TOKEN(Integer) // 123
+WLANG_TOKEN(Float) // 123.4
 WLANG_TOKEN(String) // 'foo'
 // WLANG_TOKEN(StrInter) // 'name=$user.name'
 WLANG_TOKEN(Rune) // `A` - rune

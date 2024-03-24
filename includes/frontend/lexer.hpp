@@ -3,13 +3,15 @@
 
 #include <filesystem>
 #include <iostream>
-#include <optional>
+#include <variant>
 #include <fstream>
 #include <sstream>
 #include <cctype>
 #include <memory>
 #include <string>
 #include <array>
+
+#include <utils/types.hpp>
 
 namespace W {
     enum struct TokenKind {
@@ -24,10 +26,10 @@ namespace W {
         std::size_t col;
 
         TokenKind kind;
-        std::optional<std::string> data;
+        std::variant<std::string, float64_t, int64_t, char32_t> data;
     };
 
-    template <size_t N = 10>
+    const size_t LEXER_BUFFER_SIZE = 10;
     class Lexer {
     public:
         Lexer(const std::filesystem::path& path, std::istream& input);
@@ -50,12 +52,11 @@ namespace W {
         void read_comment(bool is_multiline);
 
         const std::filesystem::path& m_path;
-        std::array<char, N> m_working_buffer;
+        std::array<char, LEXER_BUFFER_SIZE> m_working_buffer;
         std::istream& m_input;
         std::size_t m_line = 1;
         std::size_t m_col = 1;
     };
 }
 
-#include <frontend/lexer.inl>
 #endif

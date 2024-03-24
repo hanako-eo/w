@@ -1,4 +1,4 @@
-#include <optional>
+#include <variant>
 #include <utility>
 #include <sstream>
 #include <vector>
@@ -6,18 +6,20 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <frontend/lexer.hpp>
+#include <utils/types.hpp>
 
 TEST_CASE("lexing") {
     SECTION("primitives") {
-        std::istringstream data("\"test\" 'it\\'s a test' \n0 `A` `\\n` // test\n /* test */ /* /* test */ nesting */");
+        std::istringstream data("\"test\" 'it\\'s a test' \n0 /* test */ 0.5 `A` `\\n` // test\n /* /* test */ nesting */");
         W::Lexer lexer("test.w", data);
 
-        std::pair<W::TokenKind, std::optional<std::string_view>> expecteds[] = {
-            {W::TokenKind::String, std::string_view("test")},
-            {W::TokenKind::String, std::string_view("it's a test")},
-            {W::TokenKind::Number, std::string_view("0")},
-            {W::TokenKind::Rune, std::string_view("A")},
-            {W::TokenKind::Rune, std::string_view("\n")},
+        std::pair<W::TokenKind, std::variant<std::string, float64_t, int64_t, char32_t>> expecteds[] = {
+            {W::TokenKind::String, std::string("test")},
+            {W::TokenKind::String, std::string("it's a test")},
+            {W::TokenKind::Integer, 0},
+            {W::TokenKind::Float, 0.5},
+            {W::TokenKind::Rune, U'A'},
+            {W::TokenKind::Rune, U'\n'},
         };
         for (auto expected : expecteds) {
             W::Token token = lexer.next();
@@ -86,12 +88,11 @@ TEST_CASE("lexing") {
             W::Token token = lexer.next();
 
             CHECK(expected == token.kind);
-            CHECK(!token.data.has_value());
         }
 
         W::Token token1 = lexer.next();
         CHECK(W::TokenKind::Ident == token1.kind);
-        CHECK(token1.data == "test1");
+        CHECK(std::get<std::string>(token1.data) == "test1");
 
         W::Token token = lexer.next();
         CHECK(W::TokenKind::Eof == token.kind);
@@ -165,7 +166,6 @@ TEST_CASE("lexing") {
             W::Token token = lexer.next();
 
             CHECK(expected == token.kind);
-            CHECK(!token.data.has_value());
         }
 
         W::Token token = lexer.next();
