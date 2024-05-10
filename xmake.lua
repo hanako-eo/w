@@ -3,6 +3,7 @@ add_rules("mode.debug", "mode.release")
 set_languages("cxx20")
 set_toolchains("gcc")
 
+add_requires("fmt")
 add_requires("frozen")
 add_requires("catch2")
 
@@ -14,16 +15,16 @@ end
 
 add_includedirs("includes")
 set_warnings("all")
-add_cflags("-Werror=incompatible-pointer-types")
-add_cflags("-Wno-unused-function")
 
 target("w")
     set_kind("binary")
+    add_packages("fmt")
     add_packages("frozen")
     add_files("src/**.cpp")
 
 target("tests")
     set_kind("binary")
+    add_packages("fmt")
     add_packages("frozen")
     add_packages("catch2")
     add_files("src/**.cpp")

@@ -1,17 +1,16 @@
 #ifndef W_LEXER_HPP
 #define W_LEXER_HPP
 
-#include <filesystem>
 #include <iostream>
 #include <variant>
 #include <fstream>
 #include <sstream>
-#include <cctype>
 #include <memory>
 #include <string>
 #include <array>
 
 #include <utils/types.hpp>
+#include <location.hpp>
 
 namespace W {
     enum struct TokenKind {
@@ -21,9 +20,7 @@ namespace W {
     };
 
     struct Token {
-        const std::filesystem::path& file_path;
-        std::size_t line;
-        std::size_t col;
+        Location location;
 
         TokenKind kind;
         std::variant<std::string, float64_t, int64_t, char32_t> data;
