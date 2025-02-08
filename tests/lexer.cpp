@@ -13,19 +13,19 @@ TEST_CASE("lexing") {
         std::istringstream data("\"test\" 'it\\'s a test' \n0 /* test */ 0.5 `A` `\\n` // test\n /* /* test */ nesting */");
         W::Lexer lexer("test.w", data);
 
-        std::pair<W::TokenKind, std::variant<std::string, float64_t, int64_t, char32_t>> expecteds[] = {
-            {W::TokenKind::String, std::string("test")},
-            {W::TokenKind::String, std::string("it's a test")},
-            {W::TokenKind::Integer, 0},
-            {W::TokenKind::Float, 0.5},
-            {W::TokenKind::Rune, U'A'},
-            {W::TokenKind::Rune, U'\n'},
+        std::pair<W::TokenKind, std::string> expecteds[] = {
+            {W::TokenKind::String, "test"},
+            {W::TokenKind::String, "it\\'s a test"},
+            {W::TokenKind::Integer, "0"},
+            {W::TokenKind::Float, "0.5"},
+            {W::TokenKind::Rune, "A"},
+            {W::TokenKind::Rune, "\\n"},
         };
         for (auto expected : expecteds) {
             W::Token token = lexer.next();
 
             CHECK(expected.first == token.kind);
-            CHECK(expected.second == token.data);
+            CHECK(expected.second == token.raw);
         }
 
         W::Token token = lexer.next();
@@ -92,7 +92,7 @@ TEST_CASE("lexing") {
 
         W::Token token1 = lexer.next();
         CHECK(W::TokenKind::Ident == token1.kind);
-        CHECK(std::get<std::string>(token1.data) == "test1");
+        CHECK("test1" == token1.raw);
 
         W::Token token = lexer.next();
         CHECK(W::TokenKind::Eof == token.kind);

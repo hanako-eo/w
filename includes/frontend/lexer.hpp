@@ -23,13 +23,13 @@ namespace W {
         Location location;
 
         TokenKind kind;
-        std::variant<std::string, float64_t, int64_t, char32_t> data;
+        std::string raw;
     };
 
     const size_t LEXER_BUFFER_SIZE = 10;
     class Lexer {
     public:
-        Lexer(const std::filesystem::path& path, std::istream& input);
+        Lexer(std::filesystem::path path, std::istream& input);
         ~Lexer() = default;
 
         Token next();
@@ -41,14 +41,13 @@ namespace W {
         void advance(size_t offset = 1);
         void skip_whitespace();
 
-        char parse_backslash();
         void read_ident(Token& token);
         void read_number(Token& token);
         void read_rune(Token& token);
-        void read_string(Token& token, char open_quote);
+        void read_string_or_rune(Token& token, char open_quote);
         void read_comment(bool is_multiline);
 
-        const std::filesystem::path& m_path;
+        std::shared_ptr<std::filesystem::path> m_path;
         std::array<char, LEXER_BUFFER_SIZE> m_working_buffer;
         std::istream& m_input;
         std::size_t m_line = 1;

@@ -113,8 +113,8 @@ namespace W {
         { ".", TokenKind::Dot },
     });
 
-    Lexer::Lexer(const std::filesystem::path& path, std::istream& input): 
-        m_path(path),
+    Lexer::Lexer(std::filesystem::path path, std::istream& input): 
+        m_path(std::make_shared<std::filesystem::path>(std::move(path))),
         m_input(input)
     {
         for (size_t i = 0; i < LEXER_BUFFER_SIZE; i++) {
@@ -176,10 +176,8 @@ namespace W {
             read_ident(token);
         else if (std::isdigit(c))
             read_number(token);
-        else if (c == '`')
-            read_rune(token);
-        else if (c == '"' || c == '\'')
-            read_string(token, c);
+        else if (c == '"' || c == '\'' || c == '`')
+            read_string_or_rune(token, c);
         else {
             for (auto op : s_operations) {
                 if (start_with(op.first.data())) {
@@ -205,78 +203,33 @@ namespace W {
 
         if (auto it = s_reserved_keywords.find(std::string_view(data)); it == s_reserved_keywords.end()) {
             token.kind = TokenKind::Ident;
-            token.data = data;
+            token.raw = data;
         } else
             token.kind = it->second;
     }
 
     void Lexer::read_number(Token& token) {
         char c = buffer_at();
-        std::string data;
+        std::string raw;
 
         while (isxdigit(c) || c == '_') {
-            data.push_back(c);
+            raw.push_back(c);
             advance();
             c = buffer_at();
         }
 
         if (c == '.') {
             do {
-                data.push_back(c);
+                raw.push_back(c);
                 advance();
                 c = buffer_at();
             } while (isxdigit(c) || c == '_');
 
             token.kind = TokenKind::Float;
-            token.data = std::stod(data);
         } else {
             token.kind = TokenKind::Integer;
-            token.data = std::stol(data);
         }
-    }
-
-    void Lexer::read_rune(Token& token) {
-        char32_t data = 0;
-
-        // skip start '`'
-        advance();
-        char c = buffer_at();
-        if (c == '\\') {
-            c = parse_backslash();
-            if (c > -1) data = static_cast<char32_t>(c);
-            else todo("error \\n in char");
-            advance();
-            c = buffer_at();
-        } else {
-            // parse utf-8 char
-            int len = 0;
-
-            // test 0xxxxxxx
-            if (c >> 7 == 0) len = 1;
-            // test 110xxxxx
-            else if (c >> 5 == 0x6) len = 2;
-            // test 1110xxxx
-            else if (c >> 4 == 0xE) len = 3;
-            // test 11110xxx
-            else if (c >> 5 == 0x1E) len = 4;
-            // get only the first byte invalid
-            else len = 1;
-
-            while (len--) {
-                if (c == '`') break;
-
-                data = (data << 8) | c;
-                advance();
-                c = buffer_at();
-            }
-        }
-
-        // skip end '`'
-        if (c == '`') advance();
-        else todo("error for '`' at the end of rune");
-
-        token.kind = TokenKind::Rune;
-        token.data = data;
+        token.raw = raw;
     }
 
     void Lexer::read_comment(bool is_multiline) {
@@ -303,77 +256,25 @@ namespace W {
         }
     }
 
-    char Lexer::parse_backslash() {
-        // skip '\'
-        advance();
-        char c = buffer_at();
-    
-        switch (c) {
-        case '0': {
-            return '\0';
-        }
-        case 'n': {
-            return '\n';
-        }
-        case 'r': {
-            return '\r';
-        }
-        case 't': {
-            return '\t';
-        }
-        case 'b': {
-            return '\b';
-        }
-        case 'f': {
-            return '\f';
-        }
-        case 'v': {
-            return '\v';
-        }
-        case 'x': {
-            advance();
-            char a = buffer_at();
-            if (!isxdigit(a)) todo("error for \\x");
-
-            advance();
-            char b = buffer_at();
-            if (!isxdigit(b)) todo("error for \\x");
-
-            a = (a <= '9') ? a - '0' : (a & 0x7) + 9;
-            b = (b <= '9') ? b - '0' : (b & 0x7) + 9;
-
-            return (a << 4) + b;
-        }
-        case '\n': {
-            return -1;
-        }
-        default: {
-            return c;
-        }
-        }
-    }
-
-    void Lexer::read_string(Token& token, char open_quote) {
+    void Lexer::read_string_or_rune(Token& token, char open_quote) {
         std::string data;
-        // skip open " or '
+        // skip open ", ' or `
         advance();
 
         char c = buffer_at();
-        while (c > 0 && c != open_quote) {
-            if (c == '\\') {
-                c = parse_backslash();
-                if (c > -1) data.push_back(c);
-            }
-            else data.push_back(c);
+        bool ignore_next = false;
+        while (c > 0 && (c != open_quote || ignore_next)) {
+            ignore_next = c == '\\';
+            data.push_back(c);
             advance();
             c = buffer_at();
         }
 
-        // skip end " or '
+        // skip close ", ' or `
         if (c == open_quote) advance();
-        else todof("error to find `%c` at the end of rune", open_quote);
+        else todof("error to find `%c` at the end of the string or the rune", open_quote);
         
-        token.kind = TokenKind::String;
-        token.data = data;
+        token.kind = open_quote == '`' ? TokenKind::Rune : TokenKind::String;
+        token.raw = data;
     }
 }
