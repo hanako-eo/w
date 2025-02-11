@@ -89,16 +89,16 @@ namespace W {
         { "*", TokenKind::Mul },
         { "/", TokenKind::Div },
         { "%", TokenKind::Mod },
-        { "^", TokenKind::Xor },
+        { "^", TokenKind::BitXor },
         { "~", TokenKind::BitNot },
         { "?", TokenKind::Question },
         { ",", TokenKind::Comma },
         { ";", TokenKind::Semicolon },
         { ":", TokenKind::Colon },
-        { "&&", TokenKind::And },
-        { "&", TokenKind::Amp },
+        { "&&", TokenKind::LogicalAnd },
+        { "&", TokenKind::BitAnd },
         { "||", TokenKind::LogicalOr },
-        { "|", TokenKind::Pipe },
+        { "|", TokenKind::BitOr },
         { "@", TokenKind::At },
         { "{", TokenKind::Lcbr },
         { "}", TokenKind::Rcbr },
@@ -163,7 +163,7 @@ namespace W {
             skip_whitespace();
         }
 
-        Token token = {m_path, m_line, m_col, TokenKind::Unknown, {}};
+        Token token = {Location{m_path, m_line, m_col, 0, 0}, TokenKind::Unknown, {}};
 
         if (finished()) {
             token.kind = TokenKind::Eof;
@@ -187,6 +187,9 @@ namespace W {
                 }
             }
         }
+
+        token.location.end_line = m_line;
+        token.location.end_col = m_col;
 
         return token;
     }

@@ -9,7 +9,7 @@ namespace W {
 
     const Token& TokenStream::next() {
         if (m_index == m_tokens.size()) {
-            m_tokens.push_back((m_lexer.next()));
+            m_tokens.push_back(m_lexer.next());
         }
         return m_tokens[m_index++];
     }

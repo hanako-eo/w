@@ -15,11 +15,12 @@ WLANG_TOKEN(Minus) // -
 WLANG_TOKEN(Mul) // *
 WLANG_TOKEN(Div) // /
 WLANG_TOKEN(Mod) // %
-WLANG_TOKEN(Xor) // ^
-WLANG_TOKEN(Pipe) // |
+WLANG_TOKEN(BitAnd) // &
+WLANG_TOKEN(BitOr) // |
+WLANG_TOKEN(BitXor) // ^
 WLANG_TOKEN(Inc) // ++
 WLANG_TOKEN(Dec) // --
-WLANG_TOKEN(And) // &&
+WLANG_TOKEN(LogicalAnd) // &&
 WLANG_TOKEN(LogicalOr) // ||
 WLANG_TOKEN(Not) // !
 WLANG_TOKEN(BitNot) // ~
@@ -27,7 +28,6 @@ WLANG_TOKEN(Question) // ?
 WLANG_TOKEN(Comma) // ,
 WLANG_TOKEN(Semicolon) // ;
 WLANG_TOKEN(Colon) // :
-WLANG_TOKEN(Amp) // &
 WLANG_TOKEN(Hash) // #
 // WLANG_TOKEN(Dollar) // $
 WLANG_TOKEN(At) // @
@@ -54,8 +54,8 @@ WLANG_TOKEN(Lcbr) // {
 WLANG_TOKEN(Rcbr) // }
 WLANG_TOKEN(Lpar) // (
 WLANG_TOKEN(Rpar) // )
-WLANG_TOKEN(Lsbr) // [
 WLANG_TOKEN(Nilsbr) // #[
+WLANG_TOKEN(Lsbr) // [
 WLANG_TOKEN(Rsbr) // ]
 WLANG_TOKEN(Eq) // ==
 WLANG_TOKEN(Ne) // !=

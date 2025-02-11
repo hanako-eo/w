@@ -14,11 +14,12 @@ auto fmt::formatter<W::TokenKind>::format(W::TokenKind kind, format_context& ctx
         case W::TokenKind::Mul: value = "*"; break;
         case W::TokenKind::Div: value = "/"; break;
         case W::TokenKind::Mod: value = "%"; break;
-        case W::TokenKind::Xor: value = "^"; break;
-        case W::TokenKind::Pipe: value = "|"; break;
+        case W::TokenKind::BitAnd: value = "&"; break;
+        case W::TokenKind::BitOr: value = "|"; break;
+        case W::TokenKind::BitXor: value = "^"; break;
         case W::TokenKind::Inc: value = "++"; break;
         case W::TokenKind::Dec: value = "--"; break;
-        case W::TokenKind::And: value = "&&"; break;
+        case W::TokenKind::LogicalAnd: value = "&&"; break;
         case W::TokenKind::LogicalOr: value = "||"; break;
         case W::TokenKind::Not: value = "!"; break;
         case W::TokenKind::BitNot: value = "~"; break;
@@ -26,7 +27,6 @@ auto fmt::formatter<W::TokenKind>::format(W::TokenKind kind, format_context& ctx
         case W::TokenKind::Comma: value = ","; break;
         case W::TokenKind::Semicolon: value = ";"; break;
         case W::TokenKind::Colon: value = ":"; break;
-        case W::TokenKind::Amp: value = "&"; break;
         case W::TokenKind::Hash: value = "#"; break;
         case W::TokenKind::At: value = "@"; break;
         case W::TokenKind::LeftShift: value = "<<"; break;
