@@ -4,18 +4,9 @@
 #include <iostream>
 #include <string>
 #include <tuple>
-#include <fmt/core.h>
 
 #include <location.hpp>
 #include <frontend/lexer.hpp>
-
-template <> struct fmt::formatter<W::TokenKind>: formatter<std::string_view> {
-  // parse is inherited from formatter<std::string_view>.
-
-  auto format(W::TokenKind kind, format_context& ctx) const
-    -> format_context::iterator;
-};
-
 
 namespace W {
     enum struct ExceptionType {
@@ -26,10 +17,10 @@ namespace W {
 
     class Exception : public std::exception {
         public:
-            Exception(Location location, ExceptionType type);
+            inline Exception(Location location, ExceptionType type) noexcept;
             Exception(const Exception&) = default;
             Exception(Exception&&) noexcept = default;
-            ~Exception() = default;
+            ~Exception() noexcept = default;
 
             const std::string& get_message();
             inline const ExceptionType get_type() const;

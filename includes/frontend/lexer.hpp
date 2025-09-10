@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <array>
+#include <fmt/core.h>
 
 #include <utils/types.hpp>
 #include <location.hpp>
@@ -54,5 +55,12 @@ namespace W {
         std::size_t m_col = 1;
     };
 }
+
+template <> struct fmt::formatter<W::TokenKind>: formatter<std::string_view> {
+  // parse is inherited from formatter<std::string_view>.
+
+  auto format(W::TokenKind kind, format_context& ctx) const
+    -> format_context::iterator;
+};
 
 #endif

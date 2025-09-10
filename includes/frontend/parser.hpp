@@ -22,8 +22,16 @@ namespace W {
         template<std::size_t N>
         const Token& expected(std::array<TokenKind, N> kind);
         const Token& expected(TokenKind kind);
+        
+        template<std::size_t N>
+        bool start_by(std::array<TokenKind, N> kind);
+        bool start_by(TokenKind kind);
 
-        Ast::StatementPtr parse_var_declaration();
+        Ast::StatementPtr parse_var_like_declaration();
+        // Ast::StatementPtr parse_enum_declaration();
+        // Ast::StatementPtr parse_interface_declaration();
+        // Ast::StatementPtr parse_defer();
+        // Ast::StatementPtr parse_struct_declaration();
 
         Ast::ExpressionPtr parse_expr(int precedence = 0);
         Ast::ExpressionPtr parse_binary(int precedence, Ast::ExpressionPtr lhs);

@@ -12,5 +12,9 @@ WLANG_PARSER_ERROR(IllFormedRune, "invalid rune `{}`", std::string)
 WLANG_PARSER_ERROR(UnsupportedPrefixDec, "prefix decrementation is unsupported")
 WLANG_PARSER_ERROR(UnsupportedPrefixInc, "prefix incrementation is unsupported")
 
+// WLANG_PARSER_ERROR(PubInNonPublishableContext, "invalid pub, this pub is used in a context where pub is not usable (i.e. in a function body)")
+WLANG_PARSER_ERROR(UnexpectedConstMutability, "const declaration cannot be constant and mutable at the same time")
+WLANG_PARSER_ERROR(UnexpectedTypeMutability, "type declaration cannot mutable")
+
 #undef WLANG_PARSER_ERROR
 #undef WLANG_ERROR

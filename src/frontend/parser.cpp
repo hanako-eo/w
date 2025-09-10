@@ -4,6 +4,7 @@
 #include <memory>
 
 #include <errors.hpp>
+#include <utils/utility.hpp>
 #include <frontend/ast.hpp>
 #include <frontend/lexer.hpp>
 #include <frontend/parser.hpp>
@@ -37,44 +38,118 @@ namespace W {
         return token;
     }
 
-    Ast::StatementPtr Parser::next() {
-        switch (m_token_stream.peek().kind) {
-            case TokenKind::KeyMut:
-                return parse_var_declaration();
-            case TokenKind::Ident:
-                const Token& next = m_token_stream.peek(1);
+    template<std::size_t N>
+    bool Parser::start_by(std::array<TokenKind, N> kinds) {
+        auto peeked_kind = m_token_stream.peek().kind;
 
-                if (next.kind == TokenKind::DeclAssign)
-                    return parse_var_declaration();
+        for (auto it = kinds.begin(); it < kinds.end(); it++) {
+            if (peeked_kind == *it)
+                return true;
         }
-
-        auto expr = std::make_unique<Ast::ExpressionStatement>();
-        expr->expr = parse_expr();
-        expr->location = expr->expr->location;
-        return expr;
+        
+        return false;
     }
 
-    Ast::StatementPtr Parser::parse_var_declaration() {
-        const Token& first_token = m_token_stream.peek();
-        bool is_mutable = first_token.kind == TokenKind::KeyMut;
-        if (is_mutable)
+    bool Parser::start_by(TokenKind kind) {
+        bool starting_by = m_token_stream.peek().kind == kind;
+
+        if (starting_by) {
             m_token_stream.next();
+        }
+
+        return starting_by;
+    }
+
+    Ast::StatementPtr Parser::next() {
+        bool is_pub = start_by(TokenKind::KeyPub);
+
+        TokenKind kind = m_token_stream.peek().kind;
+        Ast::StatementPtr stmt = nullptr;
+        switch (kind) {
+            case TokenKind::KeyConst:
+            case TokenKind::KeyType:
+            case TokenKind::KeyMut:
+            case TokenKind::KeyStatic:
+            case TokenKind::KeyVolatile: {
+                stmt = parse_var_like_declaration();
+                break;
+            }
+            case TokenKind::Ident: {
+                const Token& next = m_token_stream.peek(1);
+
+                if (next.kind == TokenKind::DeclAssign) {
+                    stmt = parse_var_like_declaration();
+                    break;
+                }
+            }
+            default: {
+                auto expr_stmt = std::make_unique<Ast::ExpressionStatement>();
+                expr_stmt->expr = parse_expr();
+                expr_stmt->location = expr_stmt->expr->location;
+
+                stmt = std::move(expr_stmt);
+            }
+        }
         
+        stmt->is_pub = is_pub;
+        return stmt;
+    }
+
+    Ast::StatementPtr Parser::parse_var_like_declaration() {
+        using VarMod = Ast::DeclareVariableStatement::VariableModifiers;
+
+        const Token* modifier_token = &m_token_stream.peek();
+        Location start_location = modifier_token->location;
+        
+        VarMod modifiers;
+        switch (modifier_token->kind) {
+            case TokenKind::KeyConst: modifiers = VarMod::Const; break;
+            case TokenKind::KeyType: modifiers = VarMod::Type; break;
+            case TokenKind::KeyStatic: modifiers = VarMod::Static; break;
+            default: modifiers = VarMod::None; break;
+        }
+        
+        if (modifiers) {
+            m_token_stream.next();
+            modifier_token = &m_token_stream.peek();
+        }
+        
+        if(modifier_token->kind == TokenKind::KeyVolatile) {
+            modifiers |= VarMod::Volatile;
+            m_token_stream.next();
+            modifier_token = &m_token_stream.peek();
+        }
+
+        if(modifier_token->kind == TokenKind::KeyMut) {
+            if ((modifiers & VarMod::Const) != 0)
+                throw ParserUnexpectedConstMutabilityError(modifier_token->location);
+            else if ((modifiers & VarMod::Type) != 0)
+                throw ParserUnexpectedTypeMutabilityError(modifier_token->location);
+                
+            modifiers |= VarMod::Mutable;
+            m_token_stream.next();
+            modifier_token = &m_token_stream.peek();
+        }
+
         const Token& name_token = expected(TokenKind::Ident);
 
-        expected(TokenKind::Assign);
+        expected(TokenKind::DeclAssign);
 
         Ast::ExpressionPtr value = parse_expr();
 
         auto declare_var = std::make_unique<Ast::DeclareVariableStatement>();
-        declare_var->is_mutable = is_mutable;
+        declare_var->modifiers = modifiers;
         declare_var->name = std::move(name_token.raw);
-        declare_var->location = Location::merge(first_token.location, value->location);
+        declare_var->location = Location::merge(start_location, value->location);
         declare_var->value = std::move(value);
 
         return declare_var;
-        // return std::make_unique<Ast::DeclareVarStmt>(false, "test", std::make_unique<IntLiteral>(0));
     }
+
+    // Ast::StatementPtr Parser::parse_enum_declaration();
+    // Ast::StatementPtr Parser::parse_interface_declaration();
+    // Ast::StatementPtr Parser::parse_struct_declaration();
+    // Ast::StatementPtr Parser::parse_defer();
 
     Ast::ExpressionPtr Parser::parse_expr(int precedence) {
         return parse_binary(precedence, parse_unary());
@@ -159,6 +234,8 @@ namespace W {
         unary_expr->location = Location::merge(token.location, base->location);
         unary_expr->expr = std::move(base);
         unary_expr->op = op;
+
+        return unary_expr;
     }
 
     Ast::ExpressionPtr Parser::parse_access(Ast::ExpressionPtr member) {
@@ -201,25 +278,34 @@ namespace W {
     Ast::ExpressionPtr Parser::parse_primitive() {
         switch (m_token_stream.peek().kind) {
             case TokenKind::KeyTrue:
-            case TokenKind::KeyFalse:
+            case TokenKind::KeyFalse: {
                 return parse_bool();
-            case TokenKind::Integer:
+            }
+            case TokenKind::Integer: {
                 return parse_int();
-            case TokenKind::Float:
+            }
+            case TokenKind::Float: {
                 return parse_float();
-            case TokenKind::Rune:
+            }
+            case TokenKind::Rune: {
                 return parse_rune();
-            case TokenKind::String:
+            }
+            case TokenKind::String: {
                 return parse_string();
-            case TokenKind::Ident:
+            }
+            case TokenKind::Ident: {
                 return parse_ident();
-            
-            case TokenKind::Lpar:
+            }
+            case TokenKind::Lpar: {
                 Location start_location = expected(TokenKind::Lpar).location;
                 auto parent_expr = std::make_unique<Ast::ParentExpression>();
                 parent_expr->expr = parse_expr();
                 parent_expr->location = Location::merge(start_location, expected(TokenKind::Rpar).location);
                 return parent_expr;
+            }
+            default: {
+                utils::unreachable();
+            }
         }
     }
 
@@ -268,7 +354,7 @@ namespace W {
             lit->location = token.location;
             
             return lit;
-        } catch (std::range_error e) {
+        } catch (std::range_error const&) {
             throw ParserIllFormedRuneError(token.location, std::move(token.raw));
         }
     }

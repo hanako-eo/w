@@ -36,7 +36,7 @@ TEST_CASE("lexing") {
         std::istringstream data(
             "as asm assert atomic break const continue defer "
             "else enum false for fn global goto if import in interface is match module "
-            "mut nil none return sizeof likely like unlikely offsetof struct true "
+            "mut nil none return sizeof likely unlikely offsetof struct true "
             "typeof type or union pub static volatile unsafe test1"
         );
         W::Lexer lexer("test.w", data);
@@ -70,7 +70,6 @@ TEST_CASE("lexing") {
             W::TokenKind::KeyReturn,
             W::TokenKind::KeySizeof,
             W::TokenKind::KeyLikely,
-            W::TokenKind::KeyLike,
             W::TokenKind::KeyUnlikely,
             W::TokenKind::KeyOffsetof,
             W::TokenKind::KeyStruct,

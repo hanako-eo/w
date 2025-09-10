@@ -105,6 +105,8 @@ namespace W::Ast {
     
     struct Statement : Node {
         virtual ~Statement() = default;
+
+        bool is_pub;
     };
     using StatementPtr = std::unique_ptr<Statement>;
 
@@ -115,12 +117,25 @@ namespace W::Ast {
     };
 
     struct DeclareVariableStatement : Statement {
+        enum VariableModifiers {
+            None = 0,
+            Mutable = 1 << 0,
+            Const = 1 << 1,
+            Type = 1 << 2,
+            Static = 1 << 3,
+            Volatile = 1 << 4,
+        };
+        
         NodeType get_type() const override;
-
-        bool is_mutable;
+        
+        VariableModifiers modifiers;
         std::string name;
         ExpressionPtr value;
     };
+
+    inline constexpr DeclareVariableStatement::VariableModifiers& operator|=(DeclareVariableStatement::VariableModifiers& lhs, DeclareVariableStatement::VariableModifiers rhs) {
+        return lhs = static_cast<DeclareVariableStatement::VariableModifiers>(lhs | rhs);
+    }
 }
 
 #endif

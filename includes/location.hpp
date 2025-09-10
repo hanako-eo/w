@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <memory>
 
+#include <fmt/core.h>
+
 namespace W {
     struct Location {
         static inline Location merge(const Location& left, const Location& right);
@@ -19,6 +21,13 @@ namespace W {
         std::size_t end_col;
     };
 }
+
+template <> struct fmt::formatter<W::Location>: formatter<std::string> {
+  // parse is inherited from formatter<std::string>.
+
+  auto format(W::Location location, format_context& ctx) const
+    -> format_context::iterator;
+};
 
 #include <location.inl>
 
