@@ -45,6 +45,7 @@ namespace W {
         Ast::ExpressionPtr parse_rune();
         Ast::ExpressionPtr parse_string();
         Ast::ExpressionPtr parse_ident();
+        Ast::ExpressionPtr parse_enum_variant();
 
         std::vector<Ast::ExpressionPtr> parse_expr_list(TokenKind termination_token, Location* termination_location);
 

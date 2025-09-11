@@ -63,17 +63,32 @@ namespace W::Ast {
         UnaryOp op;
         ExpressionPtr expr;
     };
-
+    
     struct IdentExpression : Expression {
         NodeType get_type() const override;
-
+        
         std::string value;
     };
-
+    
     struct ParentExpression : Expression {
         NodeType get_type() const override;
-
+        
         ExpressionPtr expr;
+    };
+
+    // TYPE EXPRESSIONS
+
+    struct ArrayTypeExpression : Expression {
+        NodeType get_type() const override;
+
+        ExpressionPtr lenght;
+        ExpressionPtr inner_type;
+    };
+
+    struct SliceTypeExpression : Expression {
+        NodeType get_type() const override;
+
+        ExpressionPtr inner_type;
     };
 
     // LITERALS
@@ -97,6 +112,12 @@ namespace W::Ast {
         // needed to avoid issue due to the precission of a float (during the
         // translation into C)
         std::string raw;
+    };
+
+    struct EnumVariantLiteral : Expression {
+        NodeType get_type() const override;
+
+        std::string value;
     };
 
     struct RuneLiteral : Expression {

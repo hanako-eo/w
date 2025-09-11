@@ -264,33 +264,55 @@ namespace W {
     }
 
     Ast::ExpressionPtr Parser::parse_unary() {
-        Ast::UnaryOp op;
         const Token& token = m_token_stream.peek();
+        Ast::ExpressionPtr final_expr;
+        Ast::ExpressionPtr* base;
 
-        switch (token.kind) {
-            case TokenKind::Plus: op = Ast::UnaryOp::Plus; break;
-            case TokenKind::Minus: op = Ast::UnaryOp::Minus; break;
-            case TokenKind::Mul: op = Ast::UnaryOp::Deref; break;
-            case TokenKind::BitAnd: op = Ast::UnaryOp::Ref; break;
-            case TokenKind::Not: op = Ast::UnaryOp::Not; break;
-            case TokenKind::Question: op = Ast::UnaryOp::Option; break;
+        if (token.kind == TokenKind::Lsbr) {
+            expected(TokenKind::Lsbr);
+            if (start_by(TokenKind::Rsbr)) {
+                auto type_expr = std::make_unique<Ast::SliceTypeExpression>();
+                
+                base = &type_expr->inner_type;
+                final_expr = std::move(type_expr);
+            } else {
+                auto type_expr = std::make_unique<Ast::ArrayTypeExpression>();
 
-            case TokenKind::Inc: throw ParserUnsupportedPrefixIncError(token.location);
-            case TokenKind::Dec: throw ParserUnsupportedPrefixDecError(token.location);
+                type_expr->lenght = parse_expr();
+                expected(TokenKind::Rsbr);
 
-            default:
-                return parse_access(parse_primitive());
+                base = &type_expr->inner_type;
+                final_expr = std::move(type_expr);
+            }
+        } else {
+            Ast::UnaryOp op;
+            switch (token.kind) {
+                case TokenKind::Plus: op = Ast::UnaryOp::Plus; break;
+                case TokenKind::Minus: op = Ast::UnaryOp::Minus; break;
+                case TokenKind::Mul: op = Ast::UnaryOp::Deref; break;
+                case TokenKind::BitAnd: op = Ast::UnaryOp::Ref; break;
+                case TokenKind::Not: op = Ast::UnaryOp::Not; break;
+                case TokenKind::Question: op = Ast::UnaryOp::Option; break;
+                
+                case TokenKind::Inc: throw ParserUnsupportedPrefixIncError(token.location);
+                case TokenKind::Dec: throw ParserUnsupportedPrefixDecError(token.location);
+    
+                default:
+                    return parse_access(parse_primitive());
+            }
+            m_token_stream.next();
+
+            auto unary_expr = std::make_unique<Ast::UnaryExpression>();
+            unary_expr->op = op;
+
+            base = &unary_expr->expr;
+            final_expr = std::move(unary_expr);
         }
+        
+        *base = parse_unary();
+        final_expr->location = Location::merge(token.location, (*base)->location);
 
-        m_token_stream.next();
-        Ast::ExpressionPtr base = parse_unary();
-
-        auto unary_expr = std::make_unique<Ast::UnaryExpression>();
-        unary_expr->location = Location::merge(token.location, base->location);
-        unary_expr->expr = std::move(base);
-        unary_expr->op = op;
-
-        return unary_expr;
+        return final_expr;
     }
 
     Ast::ExpressionPtr Parser::parse_access(Ast::ExpressionPtr member) {
@@ -350,6 +372,9 @@ namespace W {
             }
             case TokenKind::Ident: {
                 return parse_ident();
+            }
+            case TokenKind::Dot: {
+                return parse_enum_variant();
             }
             case TokenKind::Lpar: {
                 Location start_location = expected(TokenKind::Lpar).location;
@@ -428,6 +453,16 @@ namespace W {
         auto lit = std::make_unique<Ast::IdentExpression>();
         lit->value = std::move(token.raw);
         lit->location = token.location;
+
+        return lit;
+    }
+    
+    Ast::ExpressionPtr Parser::parse_enum_variant() {
+        Location dot = expected(TokenKind::Dot).location;
+        const Token& token = expected(TokenKind::Ident);
+        auto lit = std::make_unique<Ast::EnumVariantLiteral>();
+        lit->value = std::move(token.raw);
+        lit->location = Location::merge(dot, token.location);
 
         return lit;
     }
