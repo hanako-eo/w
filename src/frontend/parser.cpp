@@ -66,6 +66,10 @@ namespace W {
         TokenKind kind = m_token_stream.peek().kind;
         Ast::StatementPtr stmt = nullptr;
         switch (kind) {
+            case TokenKind::KeyFn: {
+                stmt = parse_func_declaration();
+                break;
+            }
             case TokenKind::KeyConst:
             case TokenKind::KeyType:
             case TokenKind::KeyMut:
@@ -95,12 +99,64 @@ namespace W {
         return stmt;
     }
 
+    Ast::StatementPtr Parser::parse_func_declaration() {
+        using FuncParam = Ast::DeclareFunctionStatement::Parameter;
+        using VarMod = Ast::VariableModifiers;
+
+        auto declare_func = std::make_unique<Ast::DeclareFunctionStatement>();
+        Location start_location = expected(TokenKind::KeyFn).location;
+        
+        declare_func->name = expected(TokenKind::Ident).raw;
+        
+        // parse the function input
+        expected(TokenKind::Lpar);
+        const Token* token = &m_token_stream.peek();
+        while (token->kind != TokenKind::Rpar && token->kind != TokenKind::Eof) {
+            Location start_param_location = m_token_stream.peek().location;
+            FuncParam param;
+            
+            if (start_by(TokenKind::KeyVolatile))
+            param.modifiers |= VarMod::Volatile;
+            if (start_by(TokenKind::KeyMut))
+            param.modifiers |= VarMod::Mutable;
+            
+            param.name = expected(TokenKind::Ident).raw;
+            param.type = parse_expr();
+            param.location = Location::merge(start_location, param.type->location);
+            
+            declare_func->parameters.push_back(std::move(param));
+
+            if (!start_by(TokenKind::Comma))
+                break;
+
+            token = &m_token_stream.peek();
+        }
+        expected(TokenKind::Rpar);
+
+        // parse the function body and the return type if it exists
+        if (!start_by(TokenKind::Lcbr)) {
+            declare_func->return_type = parse_expr();
+            expected(TokenKind::Lcbr);
+        }
+
+        token = &m_token_stream.peek();
+        while (token->kind != TokenKind::Rcbr && token->kind != TokenKind::Eof) {
+            declare_func->body.push_back(next());
+            token = &m_token_stream.peek();
+        }
+        Location end_location = expected(TokenKind::Rcbr).location;
+
+        declare_func->location = Location::merge(start_location, end_location);
+
+        return declare_func;
+    }
+
     Ast::StatementPtr Parser::parse_var_like_declaration() {
-        using VarMod = Ast::DeclareVariableStatement::VariableModifiers;
+        using VarMod = Ast::VariableModifiers;
 
         const Token* modifier_token = &m_token_stream.peek();
         Location start_location = modifier_token->location;
-        
+
         VarMod modifiers;
         switch (modifier_token->kind) {
             case TokenKind::KeyConst: modifiers = VarMod::Const; break;
@@ -157,8 +213,6 @@ namespace W {
 
     Ast::ExpressionPtr Parser::parse_binary(int precedence, Ast::ExpressionPtr lhs) {
         const Token& curr_op = m_token_stream.peek();
-        if (curr_op.kind == TokenKind::Eof)
-            throw ParserUnexpectedTokenError(curr_op.location, curr_op.kind);
 
         int op_precedence = get_token_precedence(curr_op.kind);
         if (op_precedence < precedence)
@@ -195,8 +249,9 @@ namespace W {
             case TokenKind::LeftShift: bin_op = Ast::BinaryOp::ShiftLeft; break;
             case TokenKind::RightShift: bin_op = Ast::BinaryOp::ShiftRight; break;
             case TokenKind::UnsignedRightShift: bin_op = Ast::BinaryOp::UnsignedShiftRight; break;
-            default:
-                throw ParserUnexpectedTokenError(curr_op.location, curr_op.kind);
+
+            // is not a symbol of the current expression (it will be considered as a new statement or expression)
+            default: return lhs;
         }
 
         auto binary_expr = std::make_unique<Ast::BinaryExpression>();

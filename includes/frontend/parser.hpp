@@ -27,6 +27,7 @@ namespace W {
         bool start_by(std::array<TokenKind, N> kind);
         bool start_by(TokenKind kind);
 
+        Ast::StatementPtr parse_func_declaration();
         Ast::StatementPtr parse_var_like_declaration();
         // Ast::StatementPtr parse_enum_declaration();
         // Ast::StatementPtr parse_interface_declaration();

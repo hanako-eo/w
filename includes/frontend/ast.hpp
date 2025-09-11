@@ -4,12 +4,22 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <optional>
 
 #include <location.hpp>
 #include <frontend/ast_enums.hpp>
 #include <utils/types.hpp>
 
 namespace W::Ast {
+    enum VariableModifiers {
+        None = 0,
+        Mutable = 1 << 0,
+        Const = 1 << 1,
+        Type = 1 << 2,
+        Static = 1 << 3,
+        Volatile = 1 << 4,
+    };
+
     struct Node {
         virtual ~Node() = default;
 
@@ -116,15 +126,25 @@ namespace W::Ast {
         ExpressionPtr expr;
     };
 
+    struct DeclareFunctionStatement : Statement {
+		struct Parameter {
+            VariableModifiers modifiers;
+			std::string name;
+			ExpressionPtr type;
+			// ExpressionValue<ExpressionType> type;
+			Location location;
+		};
+        
+        NodeType get_type() const override;
+        
+        std::string name;
+        std::optional<ExpressionPtr> return_type;
+        // ExpressionValue<ExpressionType> return_type;
+        std::vector<Parameter> parameters;
+		std::vector<StatementPtr> body;
+    };
+
     struct DeclareVariableStatement : Statement {
-        enum VariableModifiers {
-            None = 0,
-            Mutable = 1 << 0,
-            Const = 1 << 1,
-            Type = 1 << 2,
-            Static = 1 << 3,
-            Volatile = 1 << 4,
-        };
         
         NodeType get_type() const override;
         
@@ -133,8 +153,8 @@ namespace W::Ast {
         ExpressionPtr value;
     };
 
-    inline constexpr DeclareVariableStatement::VariableModifiers& operator|=(DeclareVariableStatement::VariableModifiers& lhs, DeclareVariableStatement::VariableModifiers rhs) {
-        return lhs = static_cast<DeclareVariableStatement::VariableModifiers>(lhs | rhs);
+    inline constexpr VariableModifiers& operator|=(VariableModifiers& lhs, VariableModifiers rhs) {
+        return lhs = static_cast<VariableModifiers>(lhs | rhs);
     }
 }
 
