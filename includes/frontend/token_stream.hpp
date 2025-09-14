@@ -3,14 +3,19 @@
 
 #include <deque>
 
-#include <frontend/ast.hpp>
+#include <frontend/ast/nodes.hpp>
 #include <frontend/lexer.hpp>
 
 namespace W {
-    class TokenStream {
+    struct TokenStream {
     public:
         TokenStream(Lexer& lexer);
+        TokenStream(const TokenStream&) = delete;
+        TokenStream(TokenStream&&) noexcept = default;
         ~TokenStream() = default;
+
+        TokenStream& operator=(const TokenStream&) = delete;
+        TokenStream& operator=(TokenStream&&) noexcept = default;
 
         const Token& peek(size_t advance = 0);
         const Token& next();

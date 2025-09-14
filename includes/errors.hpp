@@ -15,7 +15,7 @@ namespace W {
         #include <error_list.hpp>
     };
 
-    class Exception : public std::exception {
+    struct Exception : public std::exception {
         public:
             inline Exception(Location location, ExceptionType type) noexcept;
             Exception(const Exception&) = default;
@@ -37,7 +37,7 @@ namespace W {
     };
 
     #define WLANG_ERROR(error_name, error_message, ...) \
-        class error_name##Error : public Exception { \
+        struct error_name##Error : public Exception { \
             public: \
                 template<typename... Args>\
                 inline error_name##Error(Location location, Args&&... args); \

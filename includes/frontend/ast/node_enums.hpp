@@ -36,8 +36,8 @@ namespace W::Ast {
     enum struct NodeType {
         None,
 
-        #define WLANG_AST(category) category,
-        #include <frontend/node_list.hpp>
+        #define WLANG_AST(X, C) X##C,
+        #include <frontend/ast/node_list.hpp>
     };
 }
 

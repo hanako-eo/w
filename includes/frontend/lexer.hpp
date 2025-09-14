@@ -28,10 +28,15 @@ namespace W {
     };
 
     const size_t LEXER_BUFFER_SIZE = 10;
-    class Lexer {
+    struct Lexer {
     public:
         Lexer(std::filesystem::path path, std::istream& input);
+        Lexer(const Lexer&) = delete;
+        Lexer(Lexer&&) noexcept = default;
         ~Lexer() = default;
+
+        Lexer& operator=(const Lexer&) = delete;
+        Lexer& operator=(Lexer&&) noexcept = default;
 
         Token next();
         bool finished();
@@ -44,7 +49,6 @@ namespace W {
 
         void read_ident(Token& token);
         void read_number(Token& token);
-        void read_rune(Token& token);
         void read_string_or_rune(Token& token, char open_quote);
         void read_comment(bool is_multiline);
 

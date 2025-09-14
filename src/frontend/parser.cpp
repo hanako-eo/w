@@ -5,7 +5,7 @@
 
 #include <errors.hpp>
 #include <utils/utility.hpp>
-#include <frontend/ast.hpp>
+#include <frontend/ast/nodes.hpp>
 #include <frontend/lexer.hpp>
 #include <frontend/parser.hpp>
 #include <frontend/token_stream.hpp>
@@ -113,18 +113,22 @@ namespace W {
         const Token* token = &m_token_stream.peek();
         while (token->kind != TokenKind::Rpar && token->kind != TokenKind::Eof) {
             Location start_param_location = m_token_stream.peek().location;
-            FuncParam param;
             
+            VarMod modifiers;
             if (start_by(TokenKind::KeyVolatile))
-            param.modifiers |= VarMod::Volatile;
+                modifiers |= VarMod::Volatile;
             if (start_by(TokenKind::KeyMut))
-            param.modifiers |= VarMod::Mutable;
+                modifiers |= VarMod::Mutable;
             
-            param.name = expected(TokenKind::Ident).raw;
-            param.type = parse_expr();
-            param.location = Location::merge(start_location, param.type->location);
-            
-            declare_func->parameters.push_back(std::move(param));
+            std::string name = expected(TokenKind::Ident).raw;
+
+            auto type = parse_expr();
+            declare_func->parameters.push_back(FuncParam {
+                .location = Location::merge(start_location, type->location),
+                .modifiers = modifiers,
+                .name = std::move(name),
+                .type = std::move(type),
+            });
 
             if (!start_by(TokenKind::Comma))
                 break;
@@ -165,7 +169,7 @@ namespace W {
             default: modifiers = VarMod::None; break;
         }
         
-        if (modifiers) {
+        if (modifiers != VarMod::None) {
             m_token_stream.next();
             modifier_token = &m_token_stream.peek();
         }
@@ -177,9 +181,9 @@ namespace W {
         }
 
         if(modifier_token->kind == TokenKind::KeyMut) {
-            if ((modifiers & VarMod::Const) != 0)
+            if ((modifiers & VarMod::Const) != VarMod::None)
                 throw ParserUnexpectedConstMutabilityError(modifier_token->location);
-            else if ((modifiers & VarMod::Type) != 0)
+            else if ((modifiers & VarMod::Type) != VarMod::None)
                 throw ParserUnexpectedTypeMutabilityError(modifier_token->location);
                 
             modifiers |= VarMod::Mutable;

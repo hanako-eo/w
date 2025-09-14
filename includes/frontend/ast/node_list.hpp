@@ -1,17 +1,21 @@
-#if !defined(WLANG_AST)
-#error You must define WLANG_AST before including this file
+#if !defined(WLANG_AST) && !defined(WLANG_AST_EXPRESSION) && !defined(WLANG_AST_LITERAL) && !defined(WLANG_AST_STATEMENT)
+#error You must define WLANG_AST or WLANG_AST_EXPRESSION or WLANG_AST_STATEMENT before including this file
+#endif
+
+#ifndef WLANG_AST
+#define WLANG_AST(X, C)
 #endif
 
 #ifndef WLANG_AST_EXPRESSION
-#define WLANG_AST_EXPRESSION(X) WLANG_AST(X ## Expression)
+#define WLANG_AST_EXPRESSION(X) WLANG_AST(X, Expression)
 #endif
 
 #ifndef WLANG_AST_LITERAL
-#define WLANG_AST_LITERAL(X) WLANG_AST(X ## Literal)
+#define WLANG_AST_LITERAL(X) WLANG_AST(X, Literal)
 #endif
 
 #ifndef WLANG_AST_STATEMENT
-#define WLANG_AST_STATEMENT(X) WLANG_AST(X ## Statement)
+#define WLANG_AST_STATEMENT(X) WLANG_AST(X, Statement)
 #endif
 
 WLANG_AST_EXPRESSION(AccessIdentifier)
@@ -36,3 +40,6 @@ WLANG_AST_STATEMENT(DeclareFunction)
 WLANG_AST_STATEMENT(DeclareVariable)
 
 #undef WLANG_AST
+#undef WLANG_AST_EXPRESSION
+#undef WLANG_AST_LITERAL
+#undef WLANG_AST_STATEMENT

@@ -6,15 +6,20 @@
 #include <cstdint>
 #include <vector>
 
-#include <frontend/ast.hpp>
+#include <frontend/ast/nodes.hpp>
 #include <frontend/lexer.hpp>
 #include <frontend/token_stream.hpp>
 
 namespace W {
-    class Parser {
+    struct Parser {
     public:
         Parser(TokenStream& token_stream);
+        Parser(const Parser&) = delete;
+        Parser(Parser&&) noexcept = default;
         ~Parser() = default;
+
+        Parser& operator=(const Parser&) = delete;
+        Parser& operator=(Parser&&) noexcept = default;
 
         Ast::StatementPtr next();
 

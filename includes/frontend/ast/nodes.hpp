@@ -7,11 +7,16 @@
 #include <optional>
 
 #include <location.hpp>
-#include <frontend/ast_enums.hpp>
+#include <frontend/ast/node_enums.hpp>
+#include <frontend/ast/expression_type.hpp>
 #include <utils/types.hpp>
 
+namespace W::Passes {
+    struct VisitorPass;
+}
+
 namespace W::Ast {
-    enum VariableModifiers {
+    enum struct VariableModifiers {
         None = 0,
         Mutable = 1 << 0,
         Const = 1 << 1,
@@ -21,29 +26,47 @@ namespace W::Ast {
     };
 
     struct Node {
+        Node() = default;
+        Node(const Node&) = delete;
+        Node(Node&&) noexcept = default;
         virtual ~Node() = default;
 
+        Node& operator=(const Node&) = delete;
+        Node& operator=(Node&&) noexcept = default;
+
         virtual NodeType get_type() const = 0;
-        
+        virtual void visit(Passes::VisitorPass& visitor) = 0;
+
         Location location;
     };
     using NodePtr = std::unique_ptr<Node>;
 
-    // EXPRESSION
+    // TYPES
+
+    struct Type {
+        ~Type() = default;
+
+        // virtual size_t get_id() const = 0;
+    };
+    using TypePtr = std::unique_ptr<Type>;
+
+    // EXPRESSIONS
 
     struct Expression : Node {
-        virtual ~Expression() = default;
+        ~Expression() = default;
     };
     using ExpressionPtr = std::unique_ptr<Expression>;
 
     struct AccessIdentifierExpression : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         std::vector<ExpressionPtr> members;
     };
 
     struct CallExpression : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         ExpressionPtr callee;
         std::vector<ExpressionPtr> params;
@@ -51,6 +74,7 @@ namespace W::Ast {
 
     struct BinaryExpression : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         BinaryOp op;
         ExpressionPtr left;
@@ -59,6 +83,7 @@ namespace W::Ast {
 
     struct UnaryExpression : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         UnaryOp op;
         ExpressionPtr expr;
@@ -66,12 +91,14 @@ namespace W::Ast {
     
     struct IdentExpression : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
         
         std::string value;
     };
     
     struct ParentExpression : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
         
         ExpressionPtr expr;
     };
@@ -80,6 +107,7 @@ namespace W::Ast {
 
     struct ArrayTypeExpression : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         ExpressionPtr lenght;
         ExpressionPtr inner_type;
@@ -87,6 +115,7 @@ namespace W::Ast {
 
     struct SliceTypeExpression : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         ExpressionPtr inner_type;
     };
@@ -95,18 +124,21 @@ namespace W::Ast {
 
     struct BoolLiteral : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         bool value;
     };
 
     struct IntLiteral : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         int64_t value;
     };
 
     struct FloatLiteral : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         float64_t value;
         // needed to avoid issue due to the precission of a float (during the
@@ -116,18 +148,21 @@ namespace W::Ast {
 
     struct EnumVariantLiteral : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         std::string value;
     };
 
     struct RuneLiteral : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         char32_t value;
     };
 
     struct StringLiteral : Expression {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         std::string value;
     };
@@ -135,7 +170,7 @@ namespace W::Ast {
     // STATEMENTS
     
     struct Statement : Node {
-        virtual ~Statement() = default;
+        ~Statement() = default;
 
         bool is_pub;
     };
@@ -143,36 +178,50 @@ namespace W::Ast {
 
     struct ExpressionStatement : Statement {
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
 
         ExpressionPtr expr;
     };
 
     struct DeclareFunctionStatement : Statement {
-		struct Parameter {
+        struct Parameter {
+            Location location;
             VariableModifiers modifiers;
-			std::string name;
-			ExpressionPtr type;
-			// ExpressionValue<ExpressionType> type;
-			Location location;
-		};
+            std::string name;
+            ExpressionType<> type;
+        };
         
         NodeType get_type() const override;
-        
+        void visit(Passes::VisitorPass& visitor) override;
+
         std::string name;
-        std::optional<ExpressionPtr> return_type;
-        // ExpressionValue<ExpressionType> return_type;
+        ExpressionType<true> return_type;
         std::vector<Parameter> parameters;
-		std::vector<StatementPtr> body;
+        std::vector<StatementPtr> body;
     };
 
     struct DeclareVariableStatement : Statement {
-        
         NodeType get_type() const override;
+        void visit(Passes::VisitorPass& visitor) override;
         
         VariableModifiers modifiers;
         std::string name;
         ExpressionPtr value;
     };
+
+    inline constexpr VariableModifiers operator&(VariableModifiers lhs, VariableModifiers rhs) {
+        return static_cast<VariableModifiers>(
+            static_cast<std::underlying_type_t<VariableModifiers>>(lhs) &
+            static_cast<std::underlying_type_t<VariableModifiers>>(rhs)
+        );
+    }
+
+    inline constexpr VariableModifiers operator|(VariableModifiers lhs, VariableModifiers rhs) {
+        return static_cast<VariableModifiers>(
+            static_cast<std::underlying_type_t<VariableModifiers>>(lhs) |
+            static_cast<std::underlying_type_t<VariableModifiers>>(rhs)
+        );
+    }
 
     inline constexpr VariableModifiers& operator|=(VariableModifiers& lhs, VariableModifiers rhs) {
         return lhs = static_cast<VariableModifiers>(lhs | rhs);

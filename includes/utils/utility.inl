@@ -1,4 +1,5 @@
 #include <cpptrace/cpptrace.hpp>
+#include <fmt/core.h>
 
 namespace W::utils {
     [[noreturn]] inline void unreachable() {
@@ -13,5 +14,16 @@ namespace W::utils {
         #else // GCC, Clang
             __builtin_unreachable();
         #endif
+    }
+
+    template <typename... T>
+    [[noreturn]] inline void panic(fmt::format_string<T...> fmt, T&&... args) {
+        fmt::print("Program panic: {}\n", fmt::format(fmt, args...));
+        #if defined(DEBUG)
+            // removes the panic call from the trace
+            cpptrace::generate_trace(1).print();
+        #endif
+
+        std::abort();
     }
 }
